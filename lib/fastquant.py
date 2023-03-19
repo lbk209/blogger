@@ -91,8 +91,10 @@ def backtest_portfolio(
     # 예) stock = stock_data[c].loc[sdate:edate]
     # 실제 주가일은 주가 데이터 stock 참고. 
     rbal_dates = [] 
-    sdt = datetime.strptime(start_date, DATE_FORMAT)
-    edt = datetime.strptime(end_date, DATE_FORMAT)
+    if isinstance(start_date, str):
+        sdt = datetime.strptime(start_date, DATE_FORMAT)
+    if isinstance(end_date, str):
+        edt = datetime.strptime(end_date, DATE_FORMAT)
     # rebalancing only for buynhold with rbal_days >0
     while strategy == 'buynhold':
         if rbal_days>0:
@@ -133,7 +135,7 @@ def backtest_portfolio(
     
     ### PlotPortfolio 입력을 위한 설정
     # 수익률등 계산에 사용하지말고 그림 용도로만 사용할 것!
-    pf_periodic = pd.DataFrame() # 포트폴리오 전체 종목을 합산한 일자별 평가액, 현금
+    #pf_periodic = pd.DataFrame() # 포트폴리오 전체 종목을 합산한 일자별 평가액, 현금
     periodics = {x:pd.DataFrame() for x in symbols} # 각 종목에 대해 일자별 평가가치, 현금
     orders = {x:pd.DataFrame() for x in symbols} # 각 종목에 대해 매매 일지
     # 리밸런싱일에 주식수 변동에 의한 종목별 포트폴리오 가치 변화. 플롯의 레이블로 사용
@@ -183,8 +185,10 @@ def backtest_portfolio(
             ## 일자별 종목값을 합산하기 위해서 dt를 인덱스로 설정.
             # pf_periodic, periodics 구성완료되면 PlotPortfolio에서 사용을 위해 df를 컬럼으로 재설정할것
             # 가중치 0인 종목은 return이 NaN이 되어 종목간 합 계산시 역시 NaN이 되므로 0으로 변경
-            periodics_nth.append(hist['periodic'].iloc[:,-4:].set_index('dt').fillna(0))
+            # 사용하지 않을 return 제외
+            periodics_nth.append(hist['periodic'].iloc[:,-4:-1].set_index('dt').fillna(0))
             orders_nth.append(hist_orders) # orders는 개별 종목별로만 사용됨
+        #return (periodics_nth, stock, symbols, cdeducts) #testing
 
         ### (PlotPortfolio)
         # 현기간 매매수수료 보정하여 그래프용 종합이력, 개별종목이력 정보 생성/추가
@@ -198,19 +202,33 @@ def backtest_portfolio(
         for i, _ in enumerate(symbols): 
             cols = ['portfolio_value', 'cash']
             try:
+                # testing
+                #if _ in ['000650', '000760']:
+                #    return (periodics_nth[i].loc[cd_date,cols], cdeducts[i])
                 periodics_nth[i].loc[cd_date,cols] = periodics_nth[i].loc[cd_date,cols] + cdeducts[i]
             # cd_date 없는 종목은 패스 (상장폐지 등의 사유로)
             # TODO: 함수 초기에 end_date (근처) 없는 종목, 가중치(weight) 0인 종목 제외하는게 더 좋겠다.
             # (symbols, stock_data, weights 에서 해당 종목 제외)
             # 단 공휴일 등으로 end_date가 정확하지 않은 경우 어떻게 처리해야하나 고민
             except KeyError:  
+                #print('testing:', _)
                 continue
+            #except IndexError: # testing
+            #    print(IndexError, i)
         cd_dates.append(cd_date)
+        #print('testing:', periodics_nth[:1])
+        #print('testing:', sum(periodics_nth))
+        #return periodics_nth # testing
         # 종목별 periodics_nth을 일자별로 합산하여 이전 포트폴리오 df에 추가
         # 참고: 같은 날자 인덱스면 행갯수가 서로 다른 데이터프레임에 대한 sum 연산가능
-        # (여기서는 모든 종목의 기간이 동일해 행갯수 동일)
-        pf_periodic = pf_periodic.append(sum(periodics_nth))
-        for i, x in enumerate(symbols): # 종목별 periodics, orders를 이전 리밸런싱 기간에 이어 추가
+        # (여기서는 모든 종목의 기간이 동일해 행갯수 동일) 
+        #pf_periodic = pf_periodic.append(sum(periodics_nth)) # TODO: add return(ratio) as well?
+        # 종목별 기간 다른 경우를 위해 sum 대시 add 사용
+        pf_periodic = periodics_nth[0]
+        for x in periodics_nth[1:]:
+            pf_periodic = pf_periodic.add(x, fill_value=0)
+        # 종목별 periodics, orders를 이전 리밸런싱 기간에 이어 추가
+        for i, x in enumerate(symbols):
             if nth == 0: # 종목별 초기 투자액
                 pfval_rebal[x].append(init_cash*weights[i])
             else:
@@ -231,7 +249,7 @@ def backtest_portfolio(
         # 기간별 수익률 계산
         pnl = res_bal['pnl'].sum()
         init_cash = res_bal['init_cash'].sum() 
-        ret = pnl/init_cash*100 
+        ret = pnl/init_cash*100 # simple interest
         print_out = '{}th period return: {:.2f}%'.format(nth+1, ret)
         pout_size = len(print_out)
         #print('-'*pout_size, print_out, '-'*pout_size, sep='\n')
@@ -272,14 +290,17 @@ def backtest_portfolio(
     periodics = {k:v.reset_index() for k,v in periodics.items()}
 
     ### 누적 수익률
+    #return (res_tot, orders) # testing_220324
     rbal_sum = res_tot.groupby(by=['start_date'])['init_cash','final_value'].sum() # 리밸런싱 기간별 구매액과 평가액
     rbal_sum['surplus'] = rbal_sum['init_cash']-rbal_sum['final_value'].shift() # 리밸런싱 기간별 구매 차익
     net_cash = rbal_sum['init_cash'].iloc[0] + rbal_sum['surplus'].sum() # 순수 구매액
     fval = rbal_sum['final_value'].iloc[-1] # 최종 평가액
     pnl = res_tot['pnl'].sum() # 총 수익
-    ret = pnl / net_cash * 100 # 총 수익률
+    ret = pnl / net_cash * 100 # 총 수익률 (not compound but simple interest)
     result_summary = [net_cash, fval, ret]   
-    print_out = 'Initial, Final, Profit: {:,.0f}, {:,.0f}, {:.2f}%'.format(*result_summary)
+    #print_out = 'Initial, Final, Profit: {:,.0f}, {:,.0f}, {:.2f}%'.format(*result_summary)
+    print_out = 'Initial, Final, Profit: '
+    print_out = print_out + f'{net_cash:.4g}, {fval:.4g}, {pnl:.4g} ({ret:.2f}%)'
     print_out2 = 'from {} to {}'.format(start_date, end_date) 
     pout_size = len(print_out)
     print('='*pout_size, print_out, print_out2, '='*pout_size, sep='\n')
@@ -325,7 +346,10 @@ def backtest_portfolio(
             annotate_value_history(axs[0], cd_dates, pfval_rebal[c], pfval_rebal[c])
         plt.show()
     #########
-    return {'summary':result_summary, 'history':result_total}
+    #return {'summary':result_summary, 'history':result_total}
+    return {'summary':result_summary, 'history':result_total, 'orders':orders}
+    #return (pf_history, stock_data[fs_stock[0]]) # testing
+    #return pf_history # testing
 
 
 # backtest_portfolio에서 리밸런싱일 표시
