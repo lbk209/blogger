@@ -1,4 +1,4 @@
-# [데이터_가내수공업](https://leebaekku.blogspot.com) <div><img height="10%" src="camel_laptop_icon.png"/></div>
+# [데이터_가내수공업](https://leebaekku.blogspot.com)  <img style="vertical-align: bottom;" height="45" src="camel_laptop_icon.png"/>
 [블로그](https://leebaekku.blogspot.com) 포스팅을 작성하기 위해 사용한 주피터 노트북 리스트
 * [백테스팅 (Backtesting)](backtesting_scenarios.ipynb) 
   - 코스피 지수에 대하여 매매 전략별(buy & hold, MACD, Bollinger bands), 분할 매수 횟수별, 보유 기간별 수익률 비교.
@@ -13,4 +13,3 @@
   - 로또6/45의 등수별 당첨 게임수의 신뢰 구간 계산.
   - 번호별 추첨 횟수 데이터를 사용하여 각 번호별 추첨될 확률을 업데이트(베이즈 추정)
   - 관련 포스팅: [준비하시고 쏘세요](https://leebaekku.blogspot.com/2023/04/blog-post.html)
-
