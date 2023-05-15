@@ -1,4 +1,4 @@
-# <img style="vertical-align: bottom;" height="45" src="camel_laptop_icon.png"/> [데이터_가내수공업](https://leebaekku.blogspot.com)
+# <img style="vertical-align: bottom;" height="45" src="camel_laptop_icon.png"/> [데이터_가내수공업](https://github.com/lbk209/blogger)
 [블로그](https://leebaekku.blogspot.com) 포스팅을 작성하기 위해 사용한 주피터 노트북 리스트
 * [백테스팅 (Backtesting)](backtesting_scenarios.ipynb) 
   - 코스피 지수에 대하여 매매 전략별(buy & hold, MACD, Bollinger bands), 분할 매수 횟수별, 보유 기간별 수익률 비교.
